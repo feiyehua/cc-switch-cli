@@ -4861,7 +4861,8 @@ mod tests {
             Action::SwitchRoute(Route::ConfigOpenClawEnv)
         ));
         assert!(matches!(app.route, Route::ConfigOpenClawEnv));
-        assert_eq!(app.route_stack, vec![Route::Main]);
+        assert!(app.route_stack.is_empty());
+        assert_eq!(app.focus, Focus::Content);
     }
 
     #[test]
@@ -4877,7 +4878,38 @@ mod tests {
             Action::SwitchRoute(Route::ConfigOpenClawWorkspace)
         ));
         assert!(matches!(app.route, Route::ConfigOpenClawWorkspace));
-        assert_eq!(app.route_stack, vec![Route::Main]);
+        assert!(app.route_stack.is_empty());
+        assert_eq!(app.focus, Focus::Content);
+    }
+
+    #[test]
+    fn nav_down_switches_route_preview_without_entering_content() {
+        let mut app = App::new(Some(AppType::Claude));
+        app.focus = Focus::Nav;
+
+        let action = app.on_key(key(KeyCode::Down), &UiData::default());
+
+        assert!(matches!(action, Action::SwitchRoute(Route::Providers)));
+        assert_eq!(app.nav_item(), NavItem::Providers);
+        assert_eq!(app.route, Route::Providers);
+        assert_eq!(app.focus, Focus::Nav);
+        assert!(app.route_stack.is_empty());
+    }
+
+    #[test]
+    fn esc_from_top_level_content_returns_to_nav_without_home_reset() {
+        let mut app = App::new(Some(AppType::Claude));
+        app.focus = Focus::Nav;
+        app.nav_idx = nav_index(&app, NavItem::Providers);
+        app.on_key(key(KeyCode::Enter), &UiData::default());
+
+        let action = app.on_key(key(KeyCode::Esc), &UiData::default());
+
+        assert!(matches!(action, Action::None));
+        assert_eq!(app.route, Route::Providers);
+        assert_eq!(app.nav_item(), NavItem::Providers);
+        assert_eq!(app.focus, Focus::Nav);
+        assert!(app.route_stack.is_empty());
     }
 
     #[test]
@@ -4901,7 +4933,8 @@ mod tests {
                 Action::SwitchRoute(actual) if actual == expected_route
             ));
             assert_eq!(app.route, expected_route);
-            assert_eq!(app.route_stack, vec![Route::Main]);
+            assert!(app.route_stack.is_empty());
+            assert_eq!(app.focus, Focus::Content);
         }
     }
 
@@ -4916,7 +4949,8 @@ mod tests {
 
             assert!(matches!(action, Action::SwitchRoute(Route::Config)));
             assert_eq!(app.route, Route::Config);
-            assert_eq!(app.route_stack, vec![Route::Main]);
+            assert!(app.route_stack.is_empty());
+            assert_eq!(app.focus, Focus::Content);
         }
     }
 
@@ -5636,7 +5670,8 @@ mod tests {
             Action::SwitchRoute(Route::ConfigOpenClawTools)
         ));
         assert!(matches!(app.route, Route::ConfigOpenClawTools));
-        assert_eq!(app.route_stack, vec![Route::Main]);
+        assert!(app.route_stack.is_empty());
+        assert_eq!(app.focus, Focus::Content);
     }
 
     #[test]
@@ -5652,7 +5687,8 @@ mod tests {
             Action::SwitchRoute(Route::ConfigOpenClawAgents)
         ));
         assert!(matches!(app.route, Route::ConfigOpenClawAgents));
-        assert_eq!(app.route_stack, vec![Route::Main]);
+        assert!(app.route_stack.is_empty());
+        assert_eq!(app.focus, Focus::Content);
     }
 
     #[test]

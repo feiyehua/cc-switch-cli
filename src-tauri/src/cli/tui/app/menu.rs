@@ -510,6 +510,13 @@ impl App {
                 });
                 Action::None
             }
+            _ if self.focus == Focus::Content
+                && self.route_stack.is_empty()
+                && Self::nav_item_for_route(&self.app_type, &self.route) == self.nav_item() =>
+            {
+                self.focus = Focus::Nav;
+                Action::None
+            }
             _ => self.pop_route_and_switch(),
         }
     }
@@ -564,15 +571,17 @@ impl App {
         match key.code {
             KeyCode::Up => {
                 self.nav_idx = self.nav_idx.saturating_sub(1);
-                Action::None
+                self.switch_to_nav_selection()
             }
             KeyCode::Down => {
                 self.nav_idx = (self.nav_idx + 1).min(self.nav_items().len() - 1);
-                Action::None
+                self.switch_to_nav_selection()
             }
             KeyCode::Enter => {
                 if let Some(route) = self.nav_item().to_route() {
-                    self.push_route_and_switch(route)
+                    let action = self.switch_to_nav_route(route);
+                    self.focus = Focus::Content;
+                    action
                 } else {
                     self.overlay = Overlay::Confirm(ConfirmOverlay {
                         title: crate::cli::i18n::texts::tui_confirm_exit_title().to_string(),
@@ -584,6 +593,27 @@ impl App {
             }
             _ => Action::None,
         }
+    }
+
+    // Convert the currently highlighted nav item into its top-level route.
+    // Items like Exit do not have a route and are handled by Enter instead.
+    fn switch_to_nav_selection(&mut self) -> Action {
+        let Some(route) = self.nav_item().to_route() else {
+            return Action::None;
+        };
+
+        self.switch_to_nav_route(route)
+    }
+
+    // Top-level nav movement previews the selected page immediately. It is not
+    // a drill-down navigation, so it must not add Home/current route to history.
+    fn switch_to_nav_route(&mut self, route: Route) -> Action {
+        self.route_stack.clear();
+        let action = self.set_route_no_history(route);
+        // Keep focus on the nav so Up/Down can continue browsing pages; Enter
+        // may move focus into the selected page after this helper returns.
+        self.focus = Focus::Nav;
+        action
     }
 
     pub(crate) fn on_content_key(&mut self, key: KeyEvent, data: &UiData) -> Action {
